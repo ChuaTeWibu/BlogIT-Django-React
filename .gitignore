@@ -1,0 +1,17 @@
+
+# Xóa Env 
+venv
+*venv
+env
+*env
+
+
+# Xóa file tạo bởi Django
+*.log
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Xóa cache
+*__pycache__*
