@@ -49,6 +49,9 @@ urlpatterns = [
     path('post/comment-post/', api_views.PostCommentAPIView.as_view()), # Comment bai viet
     path('post/bookmark-post/', api_views.BookmarkPostAPIView.as_view()),
     
+    
+    ################ Dashboard Endpoints ################
+    path('author/dashboard/stats/<user_id>/',api_views.DashboardStats.as_view()), # Xem Thong Ke
 ]
 
 

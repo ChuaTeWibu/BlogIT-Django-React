@@ -106,9 +106,12 @@ class ProfileView(generics.RetrieveUpdateAPIView): # Xem Profile
     def get_object(self): # 
         # Lấy user_id từ URL parameters
         user_id = self.kwargs['user_id'] 
-        # kwargs là một dictionary chứa các tham số từ URL
-        # Ví dụ URL: /api/profile/123/
-        # thì self.kwargs = {'user_id': 123}
+        # self.kwargs là dictionary chứa các tham số URL động
+        # self.kwargs là một thuộc tính trong Django view, chứa tất cả các tham số của URL dưới dạng một dictionary.
+        # user_id = self.kwargs['user_id']: Lấy giá trị của user_id từ dictionary kwargs
+        # vi du: GET /api/user/5/dashboard
+        # Django sẽ chuyển user_id=5 vào self.kwargs, để self.kwargs trở thành {'user_id': 5}.
+        # Khi đó, self.kwargs['user_id'] sẽ trả về 5, và dòng user_id = self.kwargs['user_id'] sẽ gán user_id = 5
 
         # Sử dụng user_id để tìm user trong database
         user = api_models.User.objects.get(id=user_id)
@@ -148,12 +151,23 @@ class PostCategoryListAPIView(generics.ListAPIView):
     # Cho phép tất cả người dùng có thể xem danh sách bài viết
     permission_classes = [AllowAny]
     
-    # Override phương thức get_queryset để lọc bài viết theo category
+    # Override phương thức get_queryset để lọc bài viết theo category: danh mục
     def get_queryset(self):
         # Lấy category_slug từ URL
         # Ví dụ URL: # URL: /api/categories/dien-thoai/
         # thì category_slug = 'dien-thoai'
         category_slug = self.kwargs['category_slug']
+         # self.kwargs là dictionary chứa các tham số URL động
+        # self.kwargs là một thuộc tính trong Django view, chứa tất cả các tham số của URL dưới dạng một dictionary.
+        # category_slug = self.kwargs['category_slug']:
+        
+        # Lấy category_slug từ self.kwargs. Đây là giá trị được trích xuất từ URL, ví dụ: nếu URL là /api/category/python/, thì category_slug sẽ có giá trị 'python'.
+        # category = api_models.Category.objects.get(slug=category_slug):
+        # Tìm đối tượng Category có slug khớp với category_slug. Điều này giúp đảm bảo chúng ta làm việc với danh mục chính xác.
+
+        # vidu: /api/category/python/— Với category_slug là 'python'
+        # /api/category/web-development/ — Với category_slug là 'web-development'  
+          
         
         # Tìm category dựa vào slug
         category = api_models.Category.objects.get(slug=category_slug)
@@ -201,7 +215,7 @@ class PostDetailAPIView(generics.RetrieveAPIView): # Xem Bai Viet
     # Override phương thức get_object để lấy bài viết dựa vào slug
     def get_object(self):
         # Lấy slug từ URL
-        slug = self.kwargs['slug'] # slug la tham so truyen vao URL
+        slug = self.kwargs['slug'] # slug la tham so truyen vao URL vidu: /api/posts/123/ thi slug = 123
         
         # Tìm bài viết dựa vào slug
         post = api_models.Post.objects.get(slug=slug, status="Active")
@@ -379,3 +393,91 @@ class BookmarkPostAPIView(APIView):
 
             return Response({"message": "Post Bookmarked"}, status=status.HTTP_201_CREATED)
         
+######################## Dashboard APIs ########################
+
+# Import lớp ListAPIView từ Django REST framework, dùng để tạo một API trả về danh sách dữ liệu
+class DashboardStats(generics.ListAPIView):
+    # Định nghĩa serializer để chuyển dữ liệu Python thành JSON trước khi trả về cho client
+    serializer_class = api_serializer.AuthorSerializer  # AuthorSerializer: Chuyển dữ liệu từ DB sang JSON
+    
+    # Đặt quyền truy cập cho API. AllowAny cho phép mọi người, kể cả người không đăng nhập, có thể truy cập.
+    permission_classes = [AllowAny]  # AllowAny: không giới hạn quyền truy cập vào API này
+
+    # Hàm get_queryset sẽ xác định dữ liệu nào sẽ được lấy từ DB
+    def get_queryset(self):
+        # Lấy user_id từ các tham số truyền vào URL (được truyền qua kwargs)
+        user_id = self.kwargs['user_id']  # self.kwargs là dictionary chứa các tham số URL động
+        #self.kwargs là một thuộc tính trong Django view, chứa tất cả các tham số của URL dưới dạng một dictionary.
+        # user_id = self.kwargs['user_id']: Lấy giá trị của user_id từ dictionary kwargs
+        # vi du: GET /api/user/5/dashboard
+        # Django sẽ chuyển user_id=5 vào self.kwargs, để self.kwargs trở thành {'user_id': 5}.
+        # Khi đó, self.kwargs['user_id'] sẽ trả về 5, và dòng user_id = self.kwargs['user_id'] sẽ gán user_id = 5
+
+        # Lấy đối tượng User từ DB dựa trên user_id để lấy thông tin người dùng cụ thể
+        user = api_models.User.objects.get(id=user_id)  # Tìm đối tượng User với id là user_id
+        
+        # Lấy tổng số lượt xem từ các bài viết của người dùng do  
+        views = api_models.Post.objects.filter(user=user).aggregate(view=Sum("view"))['view']
+        
+        # Sử dụng .filter(user=user) để tìm tất cả bài viết của user, rồi dùng .aggregate(view=Sum("view"))
+        # để tính tổng số lượt xem từ các bài viết này.
+        
+        # aggregate(): Đây là một phương thức của QuerySet cho phép thực hiện các phép toán tính toán (như tổng, trung bình, đếm,…) trên các trường cụ thể của các bản ghi được chọn.
+        # Cú pháp chung: aggregate(<name>=<function>("field")), trong đó:
+        # <name>: Tên của kết quả sau khi tính toán. Trong trường hợp này là view.
+        # <function>: Phép toán tính toán mà ta muốn thực hiện. Ở đây là Sum.
+        # "field": Trường dữ liệu mà phép toán sẽ tính toán. Ở đây là "view".
+        # vidu: id: 1, post: Hello World, user_id: 1, view: 10
+        # id: 2, post: Python, user_id: 1, view: 20
+        # aggregate(view=Sum("view")): {'view': 30}  # Tổng số lượt xem cho các bài viết của user 5 la 30
+
+        
+        
+        # Đếm tổng số bài viết mà người dùng đã đăng
+        posts = api_models.Post.objects.filter(user=user).count()
+        # .filter(user=user) lấy danh sách bài viết của người dùng, rồi dùng .count() để đếm số lượng bài viết.
+        
+        # Tính tổng số lượt thích của tất cả bài viết của người dùng
+        likes = api_models.Post.objects.filter(user=user).aggregate(total_likes=Sum("likes"))['total_likes']
+        # .aggregate(total_likes=Sum("likes")) tính tổng số lượt thích từ bài viết của người dùng.
+        
+        # Đếm tổng số lần đánh dấu (bookmark) của toàn hệ thống, không chỉ của riêng người dùng này
+        bookmarks = api_models.Bookmark.objects.filter(user=user).count() 
+        # user phía trước sẽ là trường nằm bên model còn user phía sau là thằng id đã được gán bên trên
+        # .filter(post_user=user) lấy danh sách Bookmark của người dùng, rồi dùng .count() để đếm số lượng Bookmark.
+        # .count() lấy tổng số lượng đối tượng Bookmark trong bảng Bookmark.
+        
+        # Trả về một danh sách chứa một dictionary với các thống kê đã tính toán
+        return [{
+            "views": views,        # Tổng số lượt xem từ bài viết của người dùng
+            "posts": posts,        # Tổng số bài viết của người dùng
+            "likes": likes,        # Tổng số lượt thích từ bài viết của người dùng
+            "bookmarks": bookmarks # Tổng số lượt đánh dấu của toàn hệ thống
+        }]
+
+    # Hàm list ghi đè phương thức list mặc định của ListAPIView để trả về dữ liệu JSON
+    def list(self, request, *args, **kwargs):
+        # Gọi get_queryset để lấy dữ liệu thống kê của người dùng (được định nghĩa bên trên)
+        queryset = self.get_queryset()
+        
+        # Sử dụng serializer (AuthorSerializer) để chuyển dữ liệu sang JSON
+        serializer = self.get_serializer(queryset, many=True)  
+        # `many=True` vì queryset là một danh sách (mặc dù chỉ có một dictionary bên trong)
+        # vidu:
+        # [
+        # {'id': 1, 'name': 'John', 'age': 30},
+        # {'id': 2, 'name': 'Jane', 'age': 25},
+        # {'id': 3, 'name': 'Bob', 'age': 40}
+        # ] -> trả về Json nếu many=True thì trả về hết list
+        
+        # [
+        # {'id': 1, 'name': 'John', 'age': 30},
+        # {'id': 2, 'name': 'Jane', 'age': 25},
+        # {'id': 3, 'name': 'Bob', 'age': 40}
+        # ]
+            
+        # còn nếu many=False thì trả về một dictionary -> {'id': 1, 'name': 'John', 'age': 30},
+        
+        
+        # Trả về dữ liệu JSON đã được serializer trong một HTTP response
+        return Response(serializer.data)

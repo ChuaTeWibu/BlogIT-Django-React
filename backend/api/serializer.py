@@ -161,7 +161,7 @@ class BookMarkSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super(BookMarkSerializer, self).__init__(*args, **kwargs)
-        request = self.context.get('request') # lay request tu context
+        request = self.context.get('request') # doan nay co nghia la lay du lieu tu request, hàm context có tác dụng de lay du lieu
         if request and request.method == 'POST':
             # depth: Mở rộng mức độ chi tiết của các đối tượng liên kết trong JSON trả về.
             self.Meta.depth = 0  # Chỉ cần ID post và user khi tạo bookmark
