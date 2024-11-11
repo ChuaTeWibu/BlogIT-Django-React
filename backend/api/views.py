@@ -495,7 +495,14 @@ class DashboardStats(generics.ListAPIView):
         # Trong Django, khi bạn sử dụng phương thức order_by() để sắp xếp kết quả, mặc định nó sẽ sắp xếp theo thứ tự tăng dần (từ nhỏ nhất đến lớn nhất). Tuy nhiên, nếu bạn muốn sắp xếp theo thứ tự ngược lại, bạn có thể thêm dấu trừ (-) trước tên trường mà bạn muốn sắp xếp.
         # Ví dụ, trong trường hợp này, id là một trường tự động tăng dần, và bạn muốn sắp xếp các bài viết theo thứ tự mới nhất trước tiên. Vì vậy, bạn sử dụng -id để sắp xếp kết quả theo thứ tự ngược lại, tức là từ lớn nhất đến nhỏ nhất
 
+class DashboardPostLists(generics.ListAPIView):
+    serializer_class = api_serializer.PostSerializer
+    permission_classes = [AllowAny]
     
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        user = api_models.User.objects.get(id=user_id)
+        return api_models.Post.objects.filter(user=user).order_by("-id")
 class DashboardCommentLists(generics.ListAPIView):
     # Xác định serializer sẽ được sử dụng để chuyển đổi dữ liệu trả về thành JSON
     serializer_class = api_serializer.CommentSerializer
@@ -520,7 +527,7 @@ class DashboardCommentLists(generics.ListAPIView):
 
         
     # Định nghĩa class DashboardNotificationLists kế thừa từ ListAPIView của Django Rest Framework
-class DashboardNotificationLists(generics.ListAPIView):
+class DashboardNotificationList(generics.ListAPIView):
     # Chỉ định serializer sẽ được sử dụng để tuần tự hóa đối tượng Notification thành JSON
     serializer_class = api_serializer.NotificationSerializer
     
