@@ -456,28 +456,167 @@ class DashboardStats(generics.ListAPIView):
         }]
 
     # Hàm list ghi đè phương thức list mặc định của ListAPIView để trả về dữ liệu JSON
-    def list(self, request, *args, **kwargs):
-        # Gọi get_queryset để lấy dữ liệu thống kê của người dùng (được định nghĩa bên trên)
-        queryset = self.get_queryset()
+    # def list(self, request, *args, **kwargs):
+    #     # Gọi get_queryset để lấy dữ liệu thống kê của người dùng (được định nghĩa bên trên)
+    #     queryset = self.get_queryset()
         
-        # Sử dụng serializer (AuthorSerializer) để chuyển dữ liệu sang JSON
-        serializer = self.get_serializer(queryset, many=True)  
-        # `many=True` vì queryset là một danh sách (mặc dù chỉ có một dictionary bên trong)
-        # vidu:
-        # [
-        # {'id': 1, 'name': 'John', 'age': 30},
-        # {'id': 2, 'name': 'Jane', 'age': 25},
-        # {'id': 3, 'name': 'Bob', 'age': 40}
-        # ] -> trả về Json nếu many=True thì trả về hết list
+    #     # Sử dụng serializer (AuthorSerializer) để chuyển dữ liệu sang JSON
+    #     serializer = self.get_serializer(queryset, many=True)  
+    #     # `many=True` vì queryset là một danh sách (mặc dù chỉ có một dictionary bên trong)
+    #     # vidu:
+    #     # [
+    #     # {'id': 1, 'name': 'John', 'age': 30},
+    #     # {'id': 2, 'name': 'Jane', 'age': 25},
+    #     # {'id': 3, 'name': 'Bob', 'age': 40}
+    #     # ] -> trả về Json nếu many=True thì trả về hết list
         
-        # [
-        # {'id': 1, 'name': 'John', 'age': 30},
-        # {'id': 2, 'name': 'Jane', 'age': 25},
-        # {'id': 3, 'name': 'Bob', 'age': 40}
-        # ]
+    #     # [
+    #     # {'id': 1, 'name': 'John', 'age': 30},
+    #     # {'id': 2, 'name': 'Jane', 'age': 25},
+    #     # {'id': 3, 'name': 'Bob', 'age': 40}
+    #     # ]
             
-        # còn nếu many=False thì trả về một dictionary -> {'id': 1, 'name': 'John', 'age': 30},
+    #     # còn nếu many=False thì trả về một dictionary -> {'id': 1, 'name': 'John', 'age': 30},
         
         
-        # Trả về dữ liệu JSON đã được serializer trong một HTTP response
-        return Response(serializer.data)
+    #     # Trả về dữ liệu JSON đã được serializer trong một HTTP response
+    #     return Response(serializer.data) #.data để chuyển đổi sang Json
+    
+    
+    
+    class DashboardPostLists(generics.ListAPIView):
+        serializer_class = api_serializer.PostSerializer
+        permission_classes = [AllowAny]
+
+        def get_queryset(self):
+            user_id = self.kwargs['user_id']
+            user = api_models.User.objects.get(id=user_id)
+            return api_models.Post.objects.filter(user=user).order_by("-id") # Dấu trừ (-) trong -id là một cách để chỉ định rằng bạn muốn sắp xếp kết quả theo thứ tự ngược lại, tức là từ lớn nhất đến nhỏ nhất.
+        # Trong Django, khi bạn sử dụng phương thức order_by() để sắp xếp kết quả, mặc định nó sẽ sắp xếp theo thứ tự tăng dần (từ nhỏ nhất đến lớn nhất). Tuy nhiên, nếu bạn muốn sắp xếp theo thứ tự ngược lại, bạn có thể thêm dấu trừ (-) trước tên trường mà bạn muốn sắp xếp.
+        # Ví dụ, trong trường hợp này, id là một trường tự động tăng dần, và bạn muốn sắp xếp các bài viết theo thứ tự mới nhất trước tiên. Vì vậy, bạn sử dụng -id để sắp xếp kết quả theo thứ tự ngược lại, tức là từ lớn nhất đến nhỏ nhất
+
+    
+class DashboardCommentLists(generics.ListAPIView):
+    # Xác định serializer sẽ được sử dụng để chuyển đổi dữ liệu trả về thành JSON
+    serializer_class = api_serializer.CommentSerializer
+    
+    # Xác định các lớp phân quyền cho phép tất cả người dùng truy cập
+    permission_classes = [AllowAny]
+
+    # Phương thức get_queryset được gọi khi có request đến API. Phương thức này trả về danh sách đối tượng.
+    def get_queryset(self):
+        # Lấy ID người dùng từ URL (truyền qua biến 'user_id' trong URL)
+        user_id = self.kwargs['user_id']
+        
+        # Lấy đối tượng User từ cơ sở dữ liệu theo ID đã lấy từ URL
+        # Đây là cách để truy vấn đối tượng User có ID khớp với 'user_id'
+        user = api_models.User.objects.get(id=user_id)
+        
+        # Trả về danh sách các Comment liên quan đến User này.
+        # Dùng 'post__user' để truy vấn qua mối quan hệ giữa Comment -> Post -> User
+        # Dùng hai dấu gạch dưới là do class Comment không có user, nên phải truy cập gián tiếp bằng công thức sẽ sử dụng cú pháp __ để truy vấn qua mối quan hệ giữa Comment và Post, sau đó tiếp tục truy vấn đến user trong model Post
+        # Câu truy vấn này sẽ lọc ra tất cả các Comment mà Post của chúng có user là người dùng cụ thể
+        return api_models.Comment.objects.filter(post__user=user)
+
+        
+    # Định nghĩa class DashboardNotificationLists kế thừa từ ListAPIView của Django Rest Framework
+class DashboardNotificationLists(generics.ListAPIView):
+    # Chỉ định serializer sẽ được sử dụng để tuần tự hóa đối tượng Notification thành JSON
+    serializer_class = api_serializer.NotificationSerializer
+    
+    # Chỉ định quyền truy cập cho API này, cho phép tất cả người dùng không phân biệt đã đăng nhập hay chưa
+    permission_classes = [AllowAny]
+
+    # Phương thức get_queryset sẽ được gọi khi có request đến API này. Phương thức này trả về danh sách đối tượng.
+    def get_queryset(self):
+        # Lấy user_id từ tham số URL. 'user_id' được truyền vào URL và được truy cập qua self.kwargs.
+        user_id = self.kwargs['user_id']
+        
+        # Tìm đối tượng User từ cơ sở dữ liệu thông qua user_id
+        # Nếu không tìm thấy user với id đó, sẽ raise lỗi DoesNotExist
+        user = api_models.User.objects.get(id=user_id)
+        
+        # Trả về queryset của model Notification:
+        # - Lọc tất cả các Notification mà trường 'seen' là False
+        # - Lọc các Notification mà trường 'user' khớp với user đã lấy từ cơ sở dữ liệu
+        # Lưu ý: Dòng này có thể gây lỗi vì cú pháp sai ở phương thức `filter` (chưa dùng `filter` đúng cách)
+        return api_models.Notification.objects.filter(seen=False, user=user)
+
+class DashboardMarkNotificationAsSeen(APIView): # Error
+    # APIView co nghia la view co the truy cap nhung khong can xac thuc
+    #APIView la mot lop view co ban de tao ra cac API endpoint don gian: vidu ho tro method HTTP GET, POST, PUT, PATCH, DELETE, ho tro cho cac serializer, ho tro cac permission va van van.
+    #APIView là một lớp tuỳ chỉnh, không cần serializer, nhưng mình phải chủ động viết code xử lý các yêu cầu Get và Post của endpoint nay.
+    # Phương thức post xử lý yêu cầu POST đến API này
+    def post(self, request):
+        # Lấy 'noti_id' từ dữ liệu yêu cầu (request.data) được gửi lên API
+        # 'noti_id' sẽ là ID của thông báo mà người dùng muốn đánh dấu là đã xem
+        noti_id = request.data['noti_id'] # request.data['noti_id'] -> { 'noti_id': 01 }
+        #ví dụ thêm:     username = request.data['username']
+        #          email = request.data['email']
+        #           password = request.data['password']
+        # thì sẽ là {
+        #     'username': username,
+        #     'email': email,
+        #     'password': password
+        # }
+        
+        # Tìm đối tượng Notification trong cơ sở dữ liệu có ID khớp với 'noti_id'
+        # Nếu không tìm thấy đối tượng Notification, sẽ raise lỗi DoesNotExist
+        noti = api_models.Notification.objects.get(id=noti_id)
+        
+        # Đánh dấu thông báo là đã được xem bằng cách thay đổi giá trị của trường 'seen' thành True
+        noti.seen = True
+        
+        # Lưu lại thay đổi vào cơ sở dữ liệu
+        noti.save()
+        
+        # Trả về phản hồi JSON với thông báo thành công
+        # HTTP 200 OK có nghĩa là yêu cầu đã được xử lý thành công
+        return Response({"message": "Noti marked as seen"}, status=status.HTTP_200_OK)
+    
+class DashboardReplyCommentAPIView(APIView): #Error
+        def post(self,request):
+            comment_id = request.data['comment_id']
+            reply = request.data['reply']
+            
+            comment = api_models.Comment.objects.get(id=comment_id)
+            comment.reply = reply
+            comment.save()
+            return Response({"message": "Comment response sent"}, status=status.HTTP_200_CREATED)
+        
+class DashboardPostCreateAPIView(generics.CreateAPIView):
+    serializer_class = api_serializer.PostSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        print(request.data)
+        user_id = request.data.get('user_id')
+        title = request.data.get('title')
+        image = request.data.get('image')
+        description = request.data.get('description')
+        tags = request.data.get('tags')
+        category_id = request.data.get('category')
+        post_status = request.data.get('post_status')
+
+        # print(user_id)
+        # print(title)
+        # print(image)
+        # print(description)
+        # print(tags)
+        # print(category_id)
+        # print(post_status)
+
+        user = api_models.User.objects.get(id=user_id)
+        category = api_models.Category.objects.get(id=category_id)
+
+        post = api_models.Post.objects.create(
+            user=user,
+            title=title,
+            image=image,
+            description=description,
+            tags=tags,
+            category=category,
+            status=post_status
+        )
+
+        return Response({"message": "Post Created Successfully"}, status=status.HTTP_201_CREATED)
