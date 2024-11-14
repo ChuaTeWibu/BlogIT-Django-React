@@ -393,6 +393,8 @@ class BookmarkPostAPIView(APIView):
 
             return Response({"message": "Post Bookmarked"}, status=status.HTTP_201_CREATED)
         
+        
+        
 ######################## Dashboard APIs ########################
 
 # Import lớp ListAPIView từ Django REST framework, dùng để tạo một API trả về danh sách dữ liệu
@@ -482,9 +484,7 @@ class DashboardStats(generics.ListAPIView):
     #     # Trả về dữ liệu JSON đã được serializer trong một HTTP response
     #     return Response(serializer.data) #.data để chuyển đổi sang Json
     
-    
-    
-    class DashboardPostLists(generics.ListAPIView):
+class DashboardPostLists(generics.ListAPIView):
         serializer_class = api_serializer.PostSerializer
         permission_classes = [AllowAny]
 
@@ -495,14 +495,6 @@ class DashboardStats(generics.ListAPIView):
         # Trong Django, khi bạn sử dụng phương thức order_by() để sắp xếp kết quả, mặc định nó sẽ sắp xếp theo thứ tự tăng dần (từ nhỏ nhất đến lớn nhất). Tuy nhiên, nếu bạn muốn sắp xếp theo thứ tự ngược lại, bạn có thể thêm dấu trừ (-) trước tên trường mà bạn muốn sắp xếp.
         # Ví dụ, trong trường hợp này, id là một trường tự động tăng dần, và bạn muốn sắp xếp các bài viết theo thứ tự mới nhất trước tiên. Vì vậy, bạn sử dụng -id để sắp xếp kết quả theo thứ tự ngược lại, tức là từ lớn nhất đến nhỏ nhất
 
-class DashboardPostLists(generics.ListAPIView):
-    serializer_class = api_serializer.PostSerializer
-    permission_classes = [AllowAny]
-    
-    def get_queryset(self):
-        user_id = self.kwargs['user_id']
-        user = api_models.User.objects.get(id=user_id)
-        return api_models.Post.objects.filter(user=user).order_by("-id")
 class DashboardCommentLists(generics.ListAPIView):
     # Xác định serializer sẽ được sử dụng để chuyển đổi dữ liệu trả về thành JSON
     serializer_class = api_serializer.CommentSerializer
@@ -555,9 +547,20 @@ class DashboardMarkNotificationAsSeen(APIView): # Error
     #APIView là một lớp tuỳ chỉnh, không cần serializer, nhưng mình phải chủ động viết code xử lý các yêu cầu Get và Post của endpoint nay.
     # Phương thức post xử lý yêu cầu POST đến API này
     def post(self, request):
+        # Trong Django, request.data là một thuộc tính của đối tượng request mà chứa dữ liệu được gửi từ client (trình duyệt hoặc ứng dụng di động) đến server.
+        # Khi bạn sử dụng request.data, bạn có thể truy cập đến dữ liệu được gửi từ client dưới dạng một dictionary (từ điển).
         # Lấy 'noti_id' từ dữ liệu yêu cầu (request.data) được gửi lên API
         # 'noti_id' sẽ là ID của thông báo mà người dùng muốn đánh dấu là đã xem
         noti_id = request.data['noti_id'] # request.data['noti_id'] -> { 'noti_id': 01 }
+        # Ví dụ, nếu client gửi một yêu cầu HTTP POST với dữ liệu như sau:
+        # {
+        #     "noti_id": 123,
+        #     "message": "Hello World"
+        # }
+        #Thì trong view của Django, bạn có thể truy cập đến dữ liệu này bằng cách sử dụng request.data như sau:
+        # noti_id = request.data['noti_id']
+        # message = request.data['message']
+        
         #ví dụ thêm:     username = request.data['username']
         #          email = request.data['email']
         #           password = request.data['password']
@@ -582,7 +585,7 @@ class DashboardMarkNotificationAsSeen(APIView): # Error
         return Response({"message": "Noti marked as seen"}, status=status.HTTP_200_OK)
     
 class DashboardReplyCommentAPIView(APIView): #Error
-        def post(self,request):
+    def post(self,request):
             comment_id = request.data['comment_id']
             reply = request.data['reply']
             
@@ -627,3 +630,46 @@ class DashboardPostCreateAPIView(generics.CreateAPIView):
         )
 
         return Response({"message": "Post Created Successfully"}, status=status.HTTP_201_CREATED)
+
+
+class DashboardPostEditAPIView(generics.RetrieveUpdateDestroyAPIView):
+        serializer_class = api_serializer.PostSerializer
+        permission_classes = [AllowAny]
+
+        def get_object(self):
+            user_id = self.kwargs['user_id']
+            post_id = self.kwargs['post_id']
+            user = api_models.User.objects.get(id=user_id)
+            
+            return api_models.Post.objects.get(id=post_id, user=user)
+            
+
+        def update(self, request, *args, **kwargs):
+            post_instance = self.get_object()
+
+            title = request.data.get('title')
+            image = request.data.get('image')
+            description = request.data.get('description')
+            tags = request.data.get('tags')
+            category_id = request.data.get('category')
+            post_status = request.data.get('post_status')
+
+            # print(title)
+            # print(image)
+            # print(description)
+            # print(tags)
+            # print(category_id)
+            # print(post_status)
+
+            category = api_models.Category.objects.get(id=category_id)
+
+            post_instance.title = title
+            if image != "undefined":
+                post_instance.image = image
+            post_instance.description = description
+            post_instance.tags = tags
+            post_instance.category = category
+            post_instance.status = post_status
+            post_instance.save()
+
+            return Response({"message": "Post Updated Successfully"}, status=status.HTTP_200_OK)
